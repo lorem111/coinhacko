@@ -418,6 +418,137 @@ def get_coin_detail(coin_id):
     return jsonify({"error": "Coin not found"}), 404
 
 
+# ---------------------------------------------------------------------------
+# Liquidation Level Estimator
+# ---------------------------------------------------------------------------
+LIQUIDATION_THRESHOLD = 50_000_000  # $50M "pain" threshold
+MAINT_MARGIN = 0.005  # ~0.5% maintenance margin on Hyperliquid
+
+# Assumed distribution of OI across leverage tiers (heuristic)
+BASE_LEVERAGE_DIST = {
+    2: 0.10, 3: 0.12, 5: 0.18, 10: 0.25,
+    15: 0.15, 20: 0.10, 25: 0.05, 40: 0.05,
+}
+
+liq_cache = {"data": None, "ts": 0}
+LIQ_CACHE_TTL = 30  # seconds
+
+
+def estimate_liquidations(symbols=("BTC", "ETH", "SOL")):
+    """Estimate liquidation levels for given perp symbols."""
+
+    # Check cache
+    if liq_cache["data"] and (time.time() - liq_cache["ts"]) < LIQ_CACHE_TTL:
+        return liq_cache["data"]
+
+    perp_resp = _hl_post({"type": "metaAndAssetCtxs"})
+    perp_meta = perp_resp[0]["universe"]
+    perp_ctxs = perp_resp[1]
+
+    results = []
+
+    for market, ctx in zip(perp_meta, perp_ctxs):
+        symbol = market["name"]
+        if symbol not in symbols:
+            continue
+
+        max_lev = market["maxLeverage"]
+        oi_coins = float(ctx.get("openInterest") or 0)
+        oracle = float(ctx.get("oraclePx") or 0)
+        funding = float(ctx.get("funding") or 0)
+        mid_px = float(ctx.get("midPx") or oracle)
+
+        if oracle <= 0 or oi_coins <= 0:
+            continue
+
+        oi_usd = oi_coins * oracle
+        net_direction = "LONG" if funding >= 0 else "SHORT"
+
+        # Build leverage distribution capped at this market's max leverage
+        lev_dist = {k: v for k, v in BASE_LEVERAGE_DIST.items() if k <= max_lev}
+        total_w = sum(lev_dist.values())
+        lev_dist = {k: v / total_w for k, v in lev_dist.items()}
+
+        # Majority side = net direction, minority side gets ~30% of OI
+        majority_pct = 0.70
+        minority_pct = 0.30
+
+        levels = []
+
+        for leverage, pct_of_oi in sorted(lev_dist.items()):
+            liq_distance = (1 / leverage) * (1 - MAINT_MARGIN)
+            distance_pct = liq_distance * 100
+
+            # Only include levels within 10% of current price
+            if distance_pct > 10:
+                continue
+
+            # Longs get liquidated when price drops
+            long_liq_price = oracle * (1 - liq_distance)
+            long_amount = oi_usd * pct_of_oi * majority_pct if net_direction == "LONG" else oi_usd * pct_of_oi * minority_pct
+
+            levels.append({
+                "side": "LONG",
+                "leverage": leverage,
+                "liq_price": round(long_liq_price, 2),
+                "distance_pct": round(distance_pct, 2),
+                "amount_at_risk": round(long_amount),
+                "direction": "below",  # price needs to go below
+            })
+
+            # Shorts get liquidated when price rises
+            short_liq_price = oracle * (1 + liq_distance)
+            short_amount = oi_usd * pct_of_oi * minority_pct if net_direction == "LONG" else oi_usd * pct_of_oi * majority_pct
+
+            levels.append({
+                "side": "SHORT",
+                "leverage": leverage,
+                "liq_price": round(short_liq_price, 2),
+                "distance_pct": round(distance_pct, 2),
+                "amount_at_risk": round(short_amount),
+                "direction": "above",  # price needs to go above
+            })
+
+        # Sort levels by distance (nearest first)
+        levels.sort(key=lambda x: x["distance_pct"])
+
+        # Find the "next big liquidation" - nearest level >= threshold
+        next_big_below = None
+        next_big_above = None
+        for lv in levels:
+            if lv["amount_at_risk"] >= LIQUIDATION_THRESHOLD:
+                if lv["direction"] == "below" and not next_big_below:
+                    next_big_below = lv
+                elif lv["direction"] == "above" and not next_big_above:
+                    next_big_above = lv
+
+        results.append({
+            "symbol": symbol,
+            "price": mid_px,
+            "oracle_price": oracle,
+            "open_interest_usd": round(oi_usd),
+            "funding_rate": funding,
+            "net_direction": net_direction,
+            "max_leverage": max_lev,
+            "levels": levels,
+            "next_big_liq_below": next_big_below,
+            "next_big_liq_above": next_big_above,
+            "threshold": LIQUIDATION_THRESHOLD,
+        })
+
+    liq_cache["data"] = results
+    liq_cache["ts"] = time.time()
+    return results
+
+
+@app.route("/api/liquidations")
+def get_liquidations():
+    """Get liquidation level estimates for major assets."""
+    symbols = flask_request.args.get("symbols", "BTC,ETH,SOL")
+    symbol_list = tuple(s.strip().upper() for s in symbols.split(","))
+    return jsonify(estimate_liquidations(symbol_list))
+
+
 @app.route("/api/status")
 def get_status():
     return jsonify({

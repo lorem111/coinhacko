@@ -462,6 +462,168 @@
             font-size: 1rem;
         }
 
+        /* --- LIQUIDATION PANEL --- */
+        .liq-panel {
+            margin-bottom: 20px;
+            border: 1px solid var(--neon-pink);
+            background: rgba(20, 0, 20, 0.6);
+            box-shadow: 0 0 15px var(--neon-pink-dim);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .liq-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 200%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--neon-pink), transparent);
+            animation: scan 4s infinite;
+        }
+
+        .liq-header {
+            background: rgba(255, 0, 255, 0.1);
+            padding: 12px 20px;
+            font-family: var(--font-mono);
+            font-size: 1.3rem;
+            color: var(--neon-pink);
+            border-bottom: 1px solid var(--neon-pink-dim);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .liq-header .pulse-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--neon-pink);
+            box-shadow: 0 0 10px var(--neon-pink);
+            animation: pulse 1.5s infinite;
+        }
+
+        .liq-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0;
+        }
+
+        .liq-card {
+            padding: 15px 20px;
+            border-right: 1px solid var(--neon-pink-dim);
+            position: relative;
+        }
+
+        .liq-card:last-child {
+            border-right: none;
+        }
+
+        .liq-coin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .liq-coin-name {
+            font-family: var(--font-mono);
+            font-size: 1.4rem;
+            font-weight: bold;
+        }
+
+        .liq-oi {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            opacity: 0.7;
+        }
+
+        .liq-direction-badge {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            padding: 2px 8px;
+            border-radius: 3px;
+            border: 1px solid;
+        }
+
+        .liq-direction-badge.long {
+            color: var(--neon-green);
+            border-color: var(--neon-green);
+        }
+
+        .liq-direction-badge.short {
+            color: var(--neon-pink);
+            border-color: var(--neon-pink);
+        }
+
+        .liq-level {
+            padding: 10px;
+            margin-top: 8px;
+            border: 1px solid;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .liq-level.below {
+            border-color: var(--neon-pink-dim);
+            background: rgba(255, 0, 255, 0.05);
+        }
+
+        .liq-level.above {
+            border-color: var(--neon-green-dim);
+            background: rgba(0, 255, 65, 0.05);
+        }
+
+        .liq-level-label {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .liq-level-price {
+            font-size: 1.3rem;
+            font-weight: bold;
+        }
+
+        .liq-level-price.below { color: var(--neon-pink); }
+        .liq-level-price.above { color: var(--neon-green); }
+
+        .liq-level-meta {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 6px;
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+
+        .liq-amount {
+            font-weight: bold;
+            color: #ff4444;
+            text-shadow: 0 0 5px rgba(255, 68, 68, 0.5);
+        }
+
+        .liq-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            transition: width 0.5s;
+        }
+
+        .liq-bar.below { background: var(--neon-pink); box-shadow: 0 0 5px var(--neon-pink); }
+        .liq-bar.above { background: var(--neon-green); box-shadow: 0 0 5px var(--neon-green); }
+
+        .liq-no-data {
+            font-family: var(--font-mono);
+            color: #555;
+            text-align: center;
+            padding: 20px;
+        }
+
         /* Responsive */
         @media (max-width: 900px) {
             .detail-grid { grid-template-columns: 1fr; }
@@ -471,6 +633,13 @@
             }
             .stats-bar {
                 grid-template-columns: 1fr;
+            }
+            .liq-grid {
+                grid-template-columns: 1fr;
+            }
+            .liq-card {
+                border-right: none;
+                border-bottom: 1px solid var(--neon-pink-dim);
             }
         }
     </style>
@@ -542,6 +711,17 @@
                 <div class="stat-card">
                     <div class="stat-label">Refresh Rate</div>
                     <div class="stat-value glow-text-green">10 SEC</div>
+                </div>
+            </div>
+
+            <!-- Liquidation Level Panel -->
+            <div class="liq-panel" id="liq-panel">
+                <div class="liq-header">
+                    <span class="pulse-dot"></span>
+                    NEXT BIG LIQUIDATION // $50M+ PAIN LEVELS
+                </div>
+                <div class="liq-grid" id="liq-grid">
+                    <div class="liq-no-data">LOADING LIQUIDATION DATA...</div>
                 </div>
             </div>
 
@@ -863,6 +1043,89 @@
             });
         }
 
+        // --- LIQUIDATION DATA ---
+        async function fetchLiquidations() {
+            try {
+                const response = await fetch('/api/liquidations?symbols=BTC,ETH,SOL');
+                if (!response.ok) return;
+                const data = await response.json();
+                renderLiquidations(data);
+            } catch (e) {
+                console.error('Liquidation fetch error:', e);
+            }
+        }
+
+        function formatLiqAmount(num) {
+            if (num >= 1e9) return `$${(num / 1e9).toFixed(1)}B`;
+            if (num >= 1e6) return `$${(num / 1e6).toFixed(0)}M`;
+            if (num >= 1e3) return `$${(num / 1e3).toFixed(0)}K`;
+            return `$${num.toFixed(0)}`;
+        }
+
+        function renderLiquidations(data) {
+            const grid = document.getElementById('liq-grid');
+            if (!data || data.length === 0) {
+                grid.innerHTML = '<div class="liq-no-data">NO LIQUIDATION DATA AVAILABLE</div>';
+                return;
+            }
+
+            grid.innerHTML = '';
+
+            data.forEach(asset => {
+                const card = document.createElement('div');
+                card.className = 'liq-card';
+
+                const dirClass = asset.net_direction === 'LONG' ? 'long' : 'short';
+                const bigBelow = asset.next_big_liq_below;
+                const bigAbove = asset.next_big_liq_above;
+
+                let belowHtml = '<div class="liq-level below"><div class="liq-level-label">No major liq within 10%</div></div>';
+                let aboveHtml = '<div class="liq-level above"><div class="liq-level-label">No major liq within 10%</div></div>';
+
+                if (bigBelow) {
+                    const barWidth = Math.min((bigBelow.amount_at_risk / 200000000) * 100, 100);
+                    belowHtml = `
+                        <div class="liq-level below">
+                            <div class="liq-level-label">▼ ${bigBelow.side} LIQUIDATION (${bigBelow.leverage}x)</div>
+                            <div class="liq-level-price below">${formatCurrency(bigBelow.liq_price)}</div>
+                            <div class="liq-level-meta">
+                                <span>${bigBelow.distance_pct}% away</span>
+                                <span class="liq-amount">${formatLiqAmount(bigBelow.amount_at_risk)}</span>
+                            </div>
+                            <div class="liq-bar below" style="width: ${barWidth}%"></div>
+                        </div>`;
+                }
+
+                if (bigAbove) {
+                    const barWidth = Math.min((bigAbove.amount_at_risk / 200000000) * 100, 100);
+                    aboveHtml = `
+                        <div class="liq-level above">
+                            <div class="liq-level-label">▲ ${bigAbove.side} LIQUIDATION (${bigAbove.leverage}x)</div>
+                            <div class="liq-level-price above">${formatCurrency(bigAbove.liq_price)}</div>
+                            <div class="liq-level-meta">
+                                <span>${bigAbove.distance_pct}% away</span>
+                                <span class="liq-amount">${formatLiqAmount(bigAbove.amount_at_risk)}</span>
+                            </div>
+                            <div class="liq-bar above" style="width: ${barWidth}%"></div>
+                        </div>`;
+                }
+
+                card.innerHTML = `
+                    <div class="liq-coin-header">
+                        <div>
+                            <div class="liq-coin-name glow-text-green">${asset.symbol}</div>
+                            <div class="liq-oi">OI: ${formatLiqAmount(asset.open_interest_usd)}</div>
+                        </div>
+                        <span class="liq-direction-badge ${dirClass}">NET ${asset.net_direction}</span>
+                    </div>
+                    ${aboveHtml}
+                    ${belowHtml}
+                `;
+
+                grid.appendChild(card);
+            });
+        }
+
         // --- PAGINATION ---
         function renderPagination() {
             document.getElementById('prev-btn').disabled = currentPage <= 1;
@@ -905,7 +1168,10 @@
         // --- INIT ---
         window.onload = () => {
             fetchCoins();
+            fetchLiquidations();
             startAutoRefresh();
+            // Refresh liquidation data every 30s
+            setInterval(fetchLiquidations, 30000);
         };
 
         // Clean up on page unload
