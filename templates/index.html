@@ -206,24 +206,29 @@
 
         /* --- COIN LIST TABLE --- */
         .cyber-table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0 1px;
-            font-size: 0.9rem;
+            width: auto;
+            margin: 0 auto;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .cyber-table th,
+        .cyber-table td {
+            padding: 6px 12px;
+            vertical-align: middle;
         }
 
         .cyber-table th {
             font-family: var(--font-mono);
             color: var(--neon-pink);
-            padding: 6px 4px;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             border-bottom: 1px solid var(--neon-pink);
             text-transform: uppercase;
             text-align: right;
         }
 
-        .cyber-table th:first-child { width: 30px; text-align: left; }
-        .cyber-table th:nth-child(2) { text-align: left; }
+        .cyber-table th:first-child { width: 30px; padding-right: 5px; text-align: center; }
+        .cyber-table th:nth-child(2) { text-align: left; max-width: 140px; }
 
         .cyber-table tbody tr {
             background: rgba(0, 20, 0, 0.6);
@@ -240,15 +245,13 @@
         }
 
         .cyber-table td {
-            padding: 5px 4px;
             font-size: 0.85rem;
-            border-top: none;
             border-bottom: 1px solid rgba(0, 255, 65, 0.07);
             text-align: right;
         }
 
-        .cyber-table td:first-child { text-align: left; width: 30px; }
-        .cyber-table td:nth-child(2) { text-align: left; }
+        .cyber-table td:first-child { width: 30px; padding-right: 5px; text-align: center; }
+        .cyber-table td:nth-child(2) { text-align: left; max-width: 140px; }
 
         .coin-rank { font-family: var(--font-mono); color: #fff; font-size: 0.8rem; }
         .coin-name-wrap { display: flex; align-items: center; gap: 6px; }
@@ -470,178 +473,13 @@
             font-size: 1rem;
         }
 
-        /* --- LIQUIDATION PANEL --- */
-        .liq-panel {
-            margin-bottom: 20px;
-            border: 1px solid var(--neon-pink);
-            background: rgba(20, 0, 20, 0.6);
-            box-shadow: 0 0 15px var(--neon-pink-dim);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .liq-panel::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 200%;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, var(--neon-pink), transparent);
-            animation: scan 4s infinite;
-        }
-
-        .liq-header {
-            background: rgba(255, 0, 255, 0.1);
-            padding: 12px 20px;
-            font-family: var(--font-mono);
-            font-size: 1.3rem;
-            color: var(--neon-pink);
-            border-bottom: 1px solid var(--neon-pink-dim);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .liq-header .pulse-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: var(--neon-pink);
-            box-shadow: 0 0 10px var(--neon-pink);
-            animation: pulse 1.5s infinite;
-        }
-
-        .liq-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 0;
-            padding: 0;
-        }
-
-        .liq-card {
-            padding: 12px 15px;
-            border-right: 1px solid var(--neon-pink-dim);
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            background: rgba(255, 0, 255, 0.03);
-        }
-
-        .liq-card:last-child {
-            border-right: none;
-        }
-
-        .liq-coin-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-        }
-
-        .liq-coin-name {
-            font-family: var(--font-mono);
-            font-size: 1.4rem;
-            font-weight: bold;
-        }
-
-        .liq-oi {
-            font-family: var(--font-mono);
-            font-size: 0.85rem;
-            opacity: 0.7;
-        }
-
-        .liq-direction-badge {
-            font-family: var(--font-mono);
-            font-size: 0.8rem;
-            padding: 2px 8px;
-            border-radius: 3px;
-            border: 1px solid;
-        }
-
-        .liq-direction-badge.long {
-            color: var(--neon-green);
-            border-color: var(--neon-green);
-        }
-
-        .liq-direction-badge.short {
-            color: var(--neon-pink);
-            border-color: var(--neon-pink);
-        }
-
-        .liq-level {
-            padding: 10px;
-            margin-top: 8px;
-            border: 1px solid;
-            border-radius: 4px;
-            font-family: var(--font-mono);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .liq-level.below {
-            border-color: var(--neon-pink-dim);
-            background: rgba(255, 0, 255, 0.05);
-        }
-
-        .liq-level.above {
-            border-color: var(--neon-green-dim);
-            background: rgba(0, 255, 65, 0.05);
-        }
-
-        .liq-level-label {
-            font-size: 0.75rem;
-            opacity: 0.7;
-            text-transform: uppercase;
-            margin-bottom: 4px;
-        }
-
-        .liq-level-price {
-            font-size: 1.3rem;
-            font-weight: bold;
-        }
-
-        .liq-level-price.below { color: var(--neon-pink); }
-        .liq-level-price.above { color: var(--neon-green); }
-
-        .liq-level-meta {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 6px;
-            font-size: 0.8rem;
-            opacity: 0.8;
-        }
-
-        .liq-amount {
-            font-weight: bold;
-            color: #ff4444;
-            text-shadow: 0 0 5px rgba(255, 68, 68, 0.5);
-        }
-
-        .liq-bar {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            height: 3px;
-            transition: width 0.5s;
-        }
-
-        .liq-bar.below { background: var(--neon-pink); box-shadow: 0 0 5px var(--neon-pink); }
-        .liq-bar.above { background: var(--neon-green); box-shadow: 0 0 5px var(--neon-green); }
-
-        .liq-no-data {
-            font-family: var(--font-mono);
-            color: #555;
-            text-align: center;
-            padding: 20px;
-        }
+        /* (liquidation data now inline in table) */
 
         /* Responsive */
         @media (max-width: 900px) {
             .detail-grid { grid-template-columns: 1fr; }
-            .cyber-table th:nth-child(4), .cyber-table td:nth-child(4),
-            .cyber-table th:nth-child(5), .cyber-table td:nth-child(5) {
+            .cyber-table th:nth-child(6), .cyber-table td:nth-child(6),
+            .cyber-table th:nth-child(7), .cyber-table td:nth-child(7) {
                 display: none;
             }
             .stats-bar {
@@ -651,13 +489,6 @@
                 flex: 1 1 45%;
                 border-bottom: 1px solid var(--neon-green-dim);
                 padding: 6px 10px;
-            }
-            .liq-grid {
-                grid-template-columns: 1fr;
-            }
-            .liq-card {
-                border-right: none;
-                border-bottom: 1px solid var(--neon-pink-dim);
             }
         }
     </style>
@@ -732,26 +563,16 @@
                 </div>
             </div>
 
-            <!-- Liquidation Level Panel -->
-            <div class="liq-panel" id="liq-panel">
-                <div class="liq-header">
-                    <span class="pulse-dot"></span>
-                    NEXT BIG LIQUIDATION // $50M+ PAIN LEVELS
-                </div>
-                <div class="liq-grid" id="liq-grid">
-                    <div class="liq-no-data">LOADING LIQUIDATION DATA...</div>
-                </div>
-            </div>
-
             <table class="cyber-table">
                 <thead>
                     <tr>
                         <th>#</th>
                         <th>Asset</th>
+                        <th>Liq Level</th>
                         <th>Price</th>
                         <th>24h</th>
                         <th>Mkt Cap</th>
-                        <th>Volume</th>
+                        <th>Vol</th>
                     </tr>
                 </thead>
                 <tbody id="coin-table-body">
@@ -913,12 +734,15 @@
             }
         }
 
+        // --- LIQUIDATION MAP (populated from API) ---
+        let liquidationMap = {};
+
         // --- RENDER TABLE ---
         function renderTable(coins) {
             const tbody = document.getElementById('coin-table-body');
             tbody.innerHTML = '';
 
-            coins.forEach((coin, index) => {
+            coins.forEach((coin) => {
                 const tr = document.createElement('tr');
                 tr.onclick = () => loadCoinDetails(coin.id);
 
@@ -927,21 +751,30 @@
 
                 const imgSrc = coin.image || `https://via.placeholder.com/20/00ff41/000000?text=${coin.symbol.charAt(0)}`;
 
+                // Liquidation column
+                const liqData = liquidationMap[coin.id];
+                let liqHtml = '<span style="opacity:0.1">--</span>';
+                if (liqData) {
+                    liqHtml = `<span style="color:#ff00ff; text-shadow:0 0 5px #ff00ff; font-weight:bold;">${liqData.level}</span>
+                               <span style="font-size:0.6em; display:block; opacity:0.8; line-height:1;">${liqData.side}</span>`;
+                }
+
                 tr.innerHTML = `
                     <td class="coin-rank">${coin.market_cap_rank}</td>
                     <td>
                         <div class="coin-name-wrap">
                             <img src="${imgSrc}" class="coin-icon" alt="${coin.name}" onerror="this.src='https://via.placeholder.com/20/00ff41/000000?text=${coin.symbol.charAt(0)}'">
                             <div>
-                                <div style="font-weight:bold; line-height:1">${coin.name}</div>
-                                <div style="font-family: var(--font-mono); font-size: 0.8em; opacity: 0.5; line-height:1">${coin.symbol.toUpperCase()}</div>
+                                <div style="font-weight:bold; font-size:0.95em; line-height:1">${coin.name}</div>
+                                <div style="font-size:0.7em; opacity:0.6; line-height:1">${coin.symbol.toUpperCase()}</div>
                             </div>
                         </div>
                     </td>
-                    <td class="glow-text-green" style="font-family: var(--font-mono)">${formatCurrency(coin.current_price)}</td>
+                    <td style="text-align:right; font-family: var(--font-mono);">${liqHtml}</td>
+                    <td class="glow-text-green" style="font-family: var(--font-mono); font-weight:bold;">${formatCurrency(coin.current_price)}</td>
                     <td class="${changeClass}" style="font-family: var(--font-mono)">${coin.price_change_percentage_24h.toFixed(2)}%</td>
-                    <td style="font-family: var(--font-mono); opacity: 0.5; font-size: 0.8em">${formatCompactNumber(coin.market_cap)}</td>
-                    <td style="font-family: var(--font-mono); opacity: 0.5; font-size: 0.8em">${formatCompactNumber(coin.total_volume)}</td>
+                    <td style="font-family: var(--font-mono); opacity: 0.6; font-size:0.9em">${formatCompactNumber(coin.market_cap)}</td>
+                    <td style="font-family: var(--font-mono); opacity: 0.6; font-size:0.9em">${formatCompactNumber(coin.total_volume)}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -1072,81 +905,32 @@
                 const response = await fetch('/api/liquidations?symbols=BTC,ETH,SOL');
                 if (!response.ok) return;
                 const data = await response.json();
-                renderLiquidations(data);
+
+                // Build the liquidation map from live API data
+                data.forEach(asset => {
+                    const id = asset.symbol.toLowerCase();
+                    // Pick the nearest big liq level (below or above)
+                    const below = asset.next_big_liq_below;
+                    const above = asset.next_big_liq_above;
+                    let picked = null;
+                    if (below && above) {
+                        picked = below.distance_pct <= above.distance_pct ? below : above;
+                    } else {
+                        picked = below || above;
+                    }
+                    if (picked) {
+                        liquidationMap[id] = {
+                            level: formatCurrency(picked.liq_price),
+                            side: picked.side
+                        };
+                    }
+                });
+
+                // Re-render table to show liq data
+                if (allCoins.length) renderTable(allCoins);
             } catch (e) {
                 console.error('Liquidation fetch error:', e);
             }
-        }
-
-        function formatLiqAmount(num) {
-            if (num >= 1e9) return `$${(num / 1e9).toFixed(1)}B`;
-            if (num >= 1e6) return `$${(num / 1e6).toFixed(0)}M`;
-            if (num >= 1e3) return `$${(num / 1e3).toFixed(0)}K`;
-            return `$${num.toFixed(0)}`;
-        }
-
-        function renderLiquidations(data) {
-            const grid = document.getElementById('liq-grid');
-            if (!data || data.length === 0) {
-                grid.innerHTML = '<div class="liq-no-data">NO LIQUIDATION DATA AVAILABLE</div>';
-                return;
-            }
-
-            grid.innerHTML = '';
-
-            data.forEach(asset => {
-                const card = document.createElement('div');
-                card.className = 'liq-card';
-
-                const dirClass = asset.net_direction === 'LONG' ? 'long' : 'short';
-                const bigBelow = asset.next_big_liq_below;
-                const bigAbove = asset.next_big_liq_above;
-
-                let belowHtml = '<div class="liq-level below"><div class="liq-level-label">No major liq within 10%</div></div>';
-                let aboveHtml = '<div class="liq-level above"><div class="liq-level-label">No major liq within 10%</div></div>';
-
-                if (bigBelow) {
-                    const barWidth = Math.min((bigBelow.amount_at_risk / 200000000) * 100, 100);
-                    belowHtml = `
-                        <div class="liq-level below">
-                            <div class="liq-level-label">▼ ${bigBelow.side} LIQUIDATION (${bigBelow.leverage}x)</div>
-                            <div class="liq-level-price below">${formatCurrency(bigBelow.liq_price)}</div>
-                            <div class="liq-level-meta">
-                                <span>${bigBelow.distance_pct}% away</span>
-                                <span class="liq-amount">${formatLiqAmount(bigBelow.amount_at_risk)}</span>
-                            </div>
-                            <div class="liq-bar below" style="width: ${barWidth}%"></div>
-                        </div>`;
-                }
-
-                if (bigAbove) {
-                    const barWidth = Math.min((bigAbove.amount_at_risk / 200000000) * 100, 100);
-                    aboveHtml = `
-                        <div class="liq-level above">
-                            <div class="liq-level-label">▲ ${bigAbove.side} LIQUIDATION (${bigAbove.leverage}x)</div>
-                            <div class="liq-level-price above">${formatCurrency(bigAbove.liq_price)}</div>
-                            <div class="liq-level-meta">
-                                <span>${bigAbove.distance_pct}% away</span>
-                                <span class="liq-amount">${formatLiqAmount(bigAbove.amount_at_risk)}</span>
-                            </div>
-                            <div class="liq-bar above" style="width: ${barWidth}%"></div>
-                        </div>`;
-                }
-
-                card.innerHTML = `
-                    <div class="liq-coin-header">
-                        <div>
-                            <div class="liq-coin-name glow-text-green">${asset.symbol}</div>
-                            <div class="liq-oi">OI: ${formatLiqAmount(asset.open_interest_usd)}</div>
-                        </div>
-                        <span class="liq-direction-badge ${dirClass}">NET ${asset.net_direction}</span>
-                    </div>
-                    ${aboveHtml}
-                    ${belowHtml}
-                `;
-
-                grid.appendChild(card);
-            });
         }
 
         // --- PAGINATION ---
