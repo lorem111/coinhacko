@@ -1,14 +1,8 @@
 {
-  "builds": [
-    {
-      "src": "api/index.py",
-      "use": "@vercel/python"
-    }
-  ],
   "rewrites": [
     { "source": "/api/coins", "destination": "/api/index" },
-    { "source": "/api/coin/(.*)", "destination": "/api/index" },
+    { "source": "/api/coin/:path*", "destination": "/api/index" },
     { "source": "/api/status", "destination": "/api/index" },
-    { "source": "/(.*)", "destination": "/api/index" }
+    { "source": "/api/liquidations", "destination": "/api/index" }
   ]
 }

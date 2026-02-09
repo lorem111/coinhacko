@@ -1,13 +1,12 @@
 """
 Vercel Serverless Function - Coinhacko Terminal API
-Serves both the frontend HTML and API endpoints.
+Serves API endpoints. Frontend HTML is served from public/index.html.
 Uses in-memory TTL cache (persists across warm invocations).
 """
 
 import json
 import time
 import random
-import os
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
@@ -111,6 +110,10 @@ COIN_REF = {
     "TRUMP":  {"name": "Official Trump",       "circ_supply": 200_000_000},
     "FARTCOIN":{"name": "Fartcoin",            "circ_supply": 1_000_000_000},
     "VIRTUAL": {"name": "Virtuals Protocol",   "circ_supply": 1_000_000_000},
+    "AI16Z":  {"name": "ai16z",                "circ_supply": 1_100_000_000},
+    "POPCAT":  {"name": "Popcat",              "circ_supply": 980_000_000},
+    "MEW":     {"name": "cat in a dogs world", "circ_supply": 88_000_000_000},
+    "MOTHER":  {"name": "Mother Iggy",         "circ_supply": 999_000_000},
     # k-prefixed perps (1 unit = 1000 tokens)
     "kPEPE":  {"name": "Pepe",                 "circ_supply": 420_690_000_000},
     "kSHIB":  {"name": "Shiba Inu",            "circ_supply": 589_000_000_000},
@@ -121,6 +124,7 @@ COIN_REF = {
     "kNEIRO": {"name": "Neiro",                "circ_supply": 1_000_000_000},
     # RWA / commodity
     "PAXG":   {"name": "PAX Gold",             "circ_supply": 244_500},
+    "XAUT":   {"name": "Tether Gold",          "circ_supply": 246_500},
     # HIP-3 spot
     "PURR":   {"name": "Purr",                 "circ_supply": 596_000_000},
     "HFUN":   {"name": "HyperFun",             "circ_supply": 996_000},
@@ -134,6 +138,9 @@ SPOT_MIN_VOLUME = 500
 # ---------------------------------------------------------------------------
 _cache = {"data": [], "ts": 0}
 CACHE_TTL = 15  # seconds
+
+_liq_cache = {"data": None, "ts": 0}
+LIQ_CACHE_TTL = 30  # seconds
 
 
 def _hl_post(payload):
@@ -255,25 +262,114 @@ def format_coins(coins):
 
 
 # ---------------------------------------------------------------------------
-# Read the HTML template once at module level (cold start)
+# Liquidation Level Estimator
 # ---------------------------------------------------------------------------
-_html_template = None
+LIQUIDATION_THRESHOLD = 50_000_000  # $50M "pain" threshold
+MAINT_MARGIN = 0.005  # ~0.5% maintenance margin
 
-def get_html():
-    global _html_template
-    if _html_template is None:
-        # Try multiple paths (local dev vs Vercel)
-        for path in ["templates/index.html", "api/../templates/index.html",
-                      os.path.join(os.path.dirname(__file__), "..", "templates", "index.html")]:
-            try:
-                with open(path, "r") as f:
-                    _html_template = f.read()
-                    break
-            except FileNotFoundError:
+BASE_LEVERAGE_DIST = {
+    2: 0.10, 3: 0.12, 5: 0.18, 10: 0.25,
+    15: 0.15, 20: 0.10, 25: 0.05, 40: 0.05,
+}
+
+
+def estimate_liquidations(symbols=("BTC", "ETH", "SOL")):
+    """Estimate liquidation levels for given perp symbols."""
+
+    if _liq_cache["data"] and (time.time() - _liq_cache["ts"]) < LIQ_CACHE_TTL:
+        return _liq_cache["data"]
+
+    perp_resp = _hl_post({"type": "metaAndAssetCtxs"})
+    perp_meta = perp_resp[0]["universe"]
+    perp_ctxs = perp_resp[1]
+
+    results = []
+
+    for market, ctx in zip(perp_meta, perp_ctxs):
+        symbol = market["name"]
+        if symbol not in symbols:
+            continue
+
+        max_lev = market["maxLeverage"]
+        oi_coins = float(ctx.get("openInterest") or 0)
+        oracle = float(ctx.get("oraclePx") or 0)
+        funding = float(ctx.get("funding") or 0)
+        mid_px = float(ctx.get("midPx") or oracle)
+
+        if oracle <= 0 or oi_coins <= 0:
+            continue
+
+        oi_usd = oi_coins * oracle
+        net_direction = "LONG" if funding >= 0 else "SHORT"
+
+        lev_dist = {k: v for k, v in BASE_LEVERAGE_DIST.items() if k <= max_lev}
+        total_w = sum(lev_dist.values())
+        lev_dist = {k: v / total_w for k, v in lev_dist.items()}
+
+        majority_pct = 0.70
+        minority_pct = 0.30
+
+        levels = []
+
+        for leverage, pct_of_oi in sorted(lev_dist.items()):
+            liq_distance = (1 / leverage) * (1 - MAINT_MARGIN)
+            distance_pct = liq_distance * 100
+
+            if distance_pct > 10:
                 continue
-        if _html_template is None:
-            _html_template = "<h1>Template not found</h1>"
-    return _html_template
+
+            long_liq_price = oracle * (1 - liq_distance)
+            long_amount = oi_usd * pct_of_oi * majority_pct if net_direction == "LONG" else oi_usd * pct_of_oi * minority_pct
+
+            levels.append({
+                "side": "LONG",
+                "leverage": leverage,
+                "liq_price": round(long_liq_price, 2),
+                "distance_pct": round(distance_pct, 2),
+                "amount_at_risk": round(long_amount),
+                "direction": "below",
+            })
+
+            short_liq_price = oracle * (1 + liq_distance)
+            short_amount = oi_usd * pct_of_oi * minority_pct if net_direction == "LONG" else oi_usd * pct_of_oi * majority_pct
+
+            levels.append({
+                "side": "SHORT",
+                "leverage": leverage,
+                "liq_price": round(short_liq_price, 2),
+                "distance_pct": round(distance_pct, 2),
+                "amount_at_risk": round(short_amount),
+                "direction": "above",
+            })
+
+        levels.sort(key=lambda x: x["distance_pct"])
+
+        next_big_below = None
+        next_big_above = None
+        for lv in levels:
+            if lv["amount_at_risk"] >= LIQUIDATION_THRESHOLD:
+                if lv["direction"] == "below" and not next_big_below:
+                    next_big_below = lv
+                elif lv["direction"] == "above" and not next_big_above:
+                    next_big_above = lv
+
+        results.append({
+            "symbol": symbol,
+            "price": mid_px,
+            "oracle_price": oracle,
+            "open_interest_usd": round(oi_usd),
+            "funding_rate": funding,
+            "net_direction": net_direction,
+            "max_leverage": max_lev,
+            "levels": levels,
+            "next_big_liq_below": next_big_below,
+            "next_big_liq_above": next_big_above,
+            "threshold": LIQUIDATION_THRESHOLD,
+        })
+
+    _liq_cache["data"] = results
+    _liq_cache["ts"] = time.time()
+    return results
 
 
 # ---------------------------------------------------------------------------
@@ -292,9 +388,13 @@ class handler(BaseHTTPRequestHandler):
             self._handle_coin_detail(coin_id)
         elif path == "/api/status":
             self._handle_status()
+        elif path == "/api/liquidations":
+            self._handle_liquidations(qs)
         else:
-            # Serve HTML
-            self._respond(200, get_html(), content_type="text/html")
+            # Redirect to root (served by public/index.html)
+            self.send_response(302)
+            self.send_header("Location", "/")
+            self.end_headers()
 
     def _handle_coins(self, qs):
         all_coins = format_coins(fetch_all_coins())
@@ -322,6 +422,11 @@ class handler(BaseHTTPRequestHandler):
             "cache_age": time.time() - _cache["ts"] if _cache["ts"] else None,
             "cached_coins": len(_cache["data"]),
         })
+
+    def _handle_liquidations(self, qs):
+        symbols_str = qs.get("symbols", ["BTC,ETH,SOL"])[0]
+        symbol_list = tuple(s.strip().upper() for s in symbols_str.split(","))
+        self._json_response(estimate_liquidations(symbol_list))
 
     def _json_response(self, data, status=200):
         self._respond(status, json.dumps(data), content_type="application/json")
