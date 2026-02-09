@@ -150,12 +150,15 @@
 
         .container {
             flex: 1;
-            padding: 2rem;
+            padding: 15px;
             overflow-y: auto;
-            max-width: 1600px;
+            max-width: 720px;
             width: 100%;
-            margin: 0 auto;
+            margin: 20px auto;
             position: relative;
+            border: 1px solid var(--neon-green-dim);
+            background: rgba(0, 5, 0, 0.5);
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
         }
 
         /* --- STATS BAR --- */
@@ -205,22 +208,26 @@
         .cyber-table {
             width: 100%;
             border-collapse: separate;
-            border-spacing: 0 2px;
+            border-spacing: 0 1px;
+            font-size: 0.9rem;
         }
 
         .cyber-table th {
-            text-align: left;
             font-family: var(--font-mono);
             color: var(--neon-pink);
-            padding: 10px;
-            font-size: 1.2rem;
+            padding: 6px 4px;
+            font-size: 0.85rem;
             border-bottom: 1px solid var(--neon-pink);
             text-transform: uppercase;
+            text-align: right;
         }
+
+        .cyber-table th:first-child { width: 30px; text-align: left; }
+        .cyber-table th:nth-child(2) { text-align: left; }
 
         .cyber-table tbody tr {
             background: rgba(0, 20, 0, 0.6);
-            transition: all 0.2s ease;
+            transition: all 0.15s ease;
             cursor: pointer;
             border: 1px solid transparent;
         }
@@ -233,17 +240,18 @@
         }
 
         .cyber-table td {
-            padding: 8px 12px;
-            font-size: 0.95rem;
+            padding: 5px 4px;
+            font-size: 0.85rem;
             border-top: none;
-            border-bottom: 1px solid rgba(0, 255, 65, 0.1);
+            border-bottom: 1px solid rgba(0, 255, 65, 0.07);
+            text-align: right;
         }
 
-        .cyber-table td:first-child { border-left: none; }
-        .cyber-table td:last-child { border-right: none; }
+        .cyber-table td:first-child { text-align: left; width: 30px; }
+        .cyber-table td:nth-child(2) { text-align: left; }
 
-        .coin-rank { font-family: var(--font-mono); color: #fff; }
-        .coin-name-wrap { display: flex; align-items: center; gap: 10px; }
+        .coin-rank { font-family: var(--font-mono); color: #fff; font-size: 0.8rem; }
+        .coin-name-wrap { display: flex; align-items: center; gap: 6px; }
         .coin-icon {
             width: 20px;
             height: 20px;
@@ -740,11 +748,10 @@
                     <tr>
                         <th>#</th>
                         <th>Asset</th>
-                        <th>Price (USD)</th>
-                        <th>24h %</th>
+                        <th>Price</th>
+                        <th>24h</th>
                         <th>Mkt Cap</th>
-                        <th>Vol (24h)</th>
-                        <th>Type</th>
+                        <th>Volume</th>
                     </tr>
                 </thead>
                 <tbody id="coin-table-body">
@@ -839,6 +846,15 @@
             return new Intl.NumberFormat('en-US').format(num);
         };
 
+        const formatCompactNumber = (num) => {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                notation: 'compact',
+                maximumFractionDigits: 2
+            }).format(num);
+        };
+
         // --- CLOCK ---
         setInterval(() => {
             const now = new Date();
@@ -908,27 +924,24 @@
 
                 const isUp = coin.price_change_percentage_24h >= 0;
                 const changeClass = isUp ? 'price-up' : 'price-down';
-                const changeIcon = isUp ? '▲' : '▼';
 
-                // Handle missing images
-                const imgSrc = coin.image || `https://via.placeholder.com/30/00ff41/000000?text=${coin.symbol.charAt(0)}`;
+                const imgSrc = coin.image || `https://via.placeholder.com/20/00ff41/000000?text=${coin.symbol.charAt(0)}`;
 
                 tr.innerHTML = `
                     <td class="coin-rank">${coin.market_cap_rank}</td>
                     <td>
                         <div class="coin-name-wrap">
-                            <img src="${imgSrc}" class="coin-icon" alt="${coin.name}" onerror="this.src='https://via.placeholder.com/30/00ff41/000000?text=${coin.symbol.charAt(0)}'">
+                            <img src="${imgSrc}" class="coin-icon" alt="${coin.name}" onerror="this.src='https://via.placeholder.com/20/00ff41/000000?text=${coin.symbol.charAt(0)}'">
                             <div>
-                                <div style="font-weight:bold">${coin.name}</div>
-                                <div style="font-family: var(--font-mono); font-size: 0.8em; opacity: 0.7">${coin.symbol.toUpperCase()}</div>
+                                <div style="font-weight:bold; line-height:1">${coin.name}</div>
+                                <div style="font-family: var(--font-mono); font-size: 0.8em; opacity: 0.5; line-height:1">${coin.symbol.toUpperCase()}</div>
                             </div>
                         </div>
                     </td>
-                    <td class="glow-text-green" style="font-family: var(--font-mono); font-size: 1.1em;">${formatCurrency(coin.current_price)}</td>
-                    <td class="${changeClass}" style="font-family: var(--font-mono)">${changeIcon} ${Math.abs(coin.price_change_percentage_24h).toFixed(2)}%</td>
-                    <td style="font-family: var(--font-mono); opacity: 0.8">${formatCurrency(coin.market_cap)}</td>
-                    <td style="font-family: var(--font-mono); opacity: 0.8">${formatCurrency(coin.total_volume)}</td>
-                    <td><span style="font-family: var(--font-mono); font-size: 0.8em; padding: 2px 6px; border: 1px solid ${coin.type === 'spot' ? 'var(--neon-blue)' : 'var(--neon-green)'}; color: ${coin.type === 'spot' ? 'var(--neon-blue)' : 'var(--neon-green)'}; border-radius: 3px;">${(coin.type || 'perp').toUpperCase()}</span></td>
+                    <td class="glow-text-green" style="font-family: var(--font-mono)">${formatCurrency(coin.current_price)}</td>
+                    <td class="${changeClass}" style="font-family: var(--font-mono)">${coin.price_change_percentage_24h.toFixed(2)}%</td>
+                    <td style="font-family: var(--font-mono); opacity: 0.5; font-size: 0.8em">${formatCompactNumber(coin.market_cap)}</td>
+                    <td style="font-family: var(--font-mono); opacity: 0.5; font-size: 0.8em">${formatCompactNumber(coin.total_volume)}</td>
                 `;
                 tbody.appendChild(tr);
             });
